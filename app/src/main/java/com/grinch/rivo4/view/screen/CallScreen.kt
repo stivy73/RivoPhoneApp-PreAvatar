@@ -2,12 +2,14 @@ package com.grinch.rivo4.view.screen
 
 import com.grinch.rivo4.controller.util.RivoText
 import android.Manifest
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.media.AudioManager
 import android.media.ToneGenerator
+import android.provider.ContactsContract
 import android.telecom.Call
 import android.telecom.TelecomManager
 import android.telecom.CallAudioState
@@ -76,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import com.grinch.rivo4.R
 import com.grinch.rivo4.controller.util.PreferenceManager
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.grinch.rivo4.controller.CallRecorder
 import com.grinch.rivo4.controller.CallService
 import com.grinch.rivo4.controller.CallAudioEndpoint
@@ -122,6 +125,26 @@ private fun audioEndpointIcon(endpointType: Int): ImageVector = when (endpointTy
     CallAudioEndpoint.TYPE_WIRED_HEADSET -> Icons.Default.Headset
     CallAudioEndpoint.TYPE_EARPIECE -> Icons.Default.Phone
     else -> Icons.Default.Bluetooth
+}
+
+/**
+ * Contact rows expose the small `photo` URI. The display-photo endpoint keeps the original image
+ * available for the larger in-call avatar; non-contact and unsupported URIs keep their original
+ * source.
+ */
+private fun highResolutionContactPhotoUri(photoUri: String): Uri? {
+    val uri = Uri.parse(photoUri)
+    if (uri.authority != ContactsContract.AUTHORITY) return null
+
+    val path = uri.pathSegments
+    val contactsIndex = path.indexOf("contacts")
+    val contactId = path.getOrNull(contactsIndex + 1)?.toLongOrNull() ?: return null
+    if (path.getOrNull(contactsIndex + 2) != ContactsContract.Contacts.Photo.CONTENT_DIRECTORY) return null
+
+    return ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contactId)
+        .buildUpon()
+        .appendPath(ContactsContract.Contacts.Photo.DISPLAY_PHOTO)
+        .build()
 }
 
 @Composable
@@ -1171,11 +1194,29 @@ private fun heroAvatarSize(isLandscape: Boolean): Dp {
 @Composable
 fun HeroAvatar(photoUri: String?, isLandscape: Boolean = false) {
     val prefs = koinInject<PreferenceManager>()
+    val context = LocalContext.current
     val shapeVal = prefs.getInt(PreferenceManager.KEY_AVATAR_SHAPE, 0)
     val avatarShape = rivoAvatarShape(shapeVal)
 
     val size = heroAvatarSize(isLandscape)
     val iconSize = size * 0.6f
+    val highResolutionUri = remember(photoUri) {
+        photoUri?.let(::highResolutionContactPhotoUri)
+    }
+    var useFallbackPhoto by remember(photoUri) { mutableStateOf(false) }
+    val avatarRequest = remember(context, photoUri, highResolutionUri, useFallbackPhoto) {
+        ImageRequest.Builder(context)
+            .data(if (useFallbackPhoto) photoUri else highResolutionUri ?: photoUri)
+            .size(1024)
+            .listener(
+                onError = { _, _ ->
+                    if (!useFallbackPhoto && highResolutionUri != null) {
+                        useFallbackPhoto = true
+                    }
+                }
+            )
+            .build()
+    }
 
     Box(
         modifier = Modifier
@@ -1186,7 +1227,7 @@ fun HeroAvatar(photoUri: String?, isLandscape: Boolean = false) {
     ) {
         if (!photoUri.isNullOrEmpty()) {
             AsyncImage(
-                model = photoUri,
+                model = avatarRequest,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(avatarShape),
                 contentScale = ContentScale.Crop
