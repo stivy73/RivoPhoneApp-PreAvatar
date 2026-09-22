@@ -1327,6 +1327,13 @@
     <string name="caller_search_found">Business found on Google Places with a matching phone number.</string>
     <string name="caller_search_no_match">Google Places returned no business with a matching phone number.</string>
     <string name="caller_google_result">Google Places result</string>
+    <string name="caller_google_found_title">Business found on Google Places</string>
+    <string name="caller_google_no_result_title">No business found</string>
+    <string name="caller_google_error_title">Google Places search unavailable</string>
+    <string name="caller_google_searching">Searching Google Places…</string>
+    <string name="caller_google_searching_message">Checking the business associated with this number.</string>
+    <string name="caller_google_retry">Try Google search again</string>
+    <string name="caller_personal_name_section">Personal name</string>
     <string name="caller_update_contact">Update name in contacts</string>
     <string name="caller_update_review">The contact editor will open with the suggested name. Contacts will only change when you tap Save.</string>
     <string name="caller_edit_unavailable">Unable to open a unique contact for this number. Open the contact from your address book to edit it.</string>

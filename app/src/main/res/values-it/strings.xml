@@ -1228,6 +1228,13 @@
     <string name="caller_search_found">Attività trovata su Google Places con numero telefonico corrispondente.</string>
     <string name="caller_search_no_match">Google Places non ha restituito un’attività con numero telefonico corrispondente.</string>
     <string name="caller_google_result">Risultato Google Places</string>
+    <string name="caller_google_found_title">Attività trovata su Google Places</string>
+    <string name="caller_google_no_result_title">Nessuna attività trovata</string>
+    <string name="caller_google_error_title">Ricerca Google Places non disponibile</string>
+    <string name="caller_google_searching">Ricerca su Google Places…</string>
+    <string name="caller_google_searching_message">Verifica dell’attività associata al numero in corso.</string>
+    <string name="caller_google_retry">Riprova la ricerca Google</string>
+    <string name="caller_personal_name_section">Nome personale</string>
     <string name="caller_update_contact">Aggiorna nome in rubrica</string>
     <string name="caller_update_review">Si aprirà la modifica del contatto con il nome proposto. La rubrica cambierà solo premendo Salva.</string>
     <string name="caller_edit_unavailable">Impossibile aprire un contatto univoco per questo numero. Apri il contatto dalla rubrica per modificarlo.</string>

@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -98,22 +100,54 @@ private fun CallerEditor(initialNumber: String, onDismiss: () -> Unit) {
             OutlinedTextField(number, { number = it }, label = { Text(stringResource(R.string.caller_number)) }, singleLine = true)
             Text(repository.display(label) ?: number)
             CallerProvenance(label)
-            val feedback = lookupState ?: when (label?.source) {
-                "contact" -> R.string.caller_search_contact
-                "custom" -> R.string.caller_search_custom
-                else -> lookupState
+            when {
+                lookupState == R.string.caller_searching -> GoogleLookupStatusCard(
+                    title = stringResource(R.string.caller_google_searching),
+                    message = stringResource(R.string.caller_google_searching_message),
+                    icon = { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                )
+                candidate?.name != null -> GoogleLookupStatusCard(
+                    title = stringResource(R.string.caller_google_found_title),
+                    message = candidate.name,
+                    icon = {
+                        Image(
+                            painter = painterResource(R.drawable.ic_google_places),
+                            contentDescription = stringResource(R.string.caller_google_places_logo),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    },
+                    emphasized = true
+                ) { CallerProvenance(candidate) }
+                lookupState == R.string.caller_search_no_match -> GoogleLookupStatusCard(
+                    title = stringResource(R.string.caller_google_no_result_title),
+                    message = stringResource(R.string.caller_search_no_match),
+                    icon = { Icon(Icons.Default.Info, null, modifier = Modifier.size(28.dp)) }
+                )
+                lookupState != null && lookupState !in setOf(
+                    R.string.caller_search_contact,
+                    R.string.caller_search_custom
+                ) -> GoogleLookupStatusCard(
+                    title = stringResource(R.string.caller_google_error_title),
+                    message = stringResource(lookupState),
+                    icon = { Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(28.dp)) }
+                )
             }
-            feedback?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
+
+            FilledTonalButton(
+                onClick = { repository.identify(number, refresh = true) },
+                enabled = repository.option("online") && repository.option("google") && lookupState != R.string.caller_searching,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(if (lookupState == R.string.caller_search_no_match) R.string.caller_google_retry else R.string.caller_refresh))
+            }
+
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            Text(stringResource(R.string.caller_personal_name_section), style = MaterialTheme.typography.titleSmall)
             OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.caller_custom)) }, singleLine = true)
             if (invalid) Text(stringResource(R.string.caller_invalid))
-            TextButton(onClick = { repository.identify(number, refresh = true) }, enabled = repository.option("online") && repository.option("google") && lookupState != R.string.caller_searching) {
-                Text(stringResource(R.string.caller_refresh))
-            }
             if (candidate?.name != null && label?.source in listOf("contact", "custom")) {
-                HorizontalDivider()
-                Text(stringResource(R.string.caller_google_result), style = MaterialTheme.typography.titleSmall)
-                Text(candidate.name)
-                CallerProvenance(candidate)
                 if (label?.source == "contact") {
                     TextButton(enabled = !openingContact, onClick = {
                         val selectedNumber = number
@@ -132,8 +166,10 @@ private fun CallerEditor(initialNumber: String, onDismiss: () -> Unit) {
                     Text(stringResource(R.string.caller_update_review), style = MaterialTheme.typography.bodySmall)
                 }
             }
-            TextButton(onClick = { if (repository.setCustom(number, "")) { name = "" } else invalid = true }) {
-                Text(stringResource(R.string.caller_remove_custom))
+            if (name.isNotBlank()) {
+                TextButton(onClick = { if (repository.setCustom(number, "")) { name = "" } else invalid = true }) {
+                    Text(stringResource(R.string.caller_remove_custom))
+                }
             }
             TextButton(onClick = {
                 val intent = android.content.Intent(android.content.Intent.ACTION_INSERT,
@@ -149,6 +185,37 @@ private fun CallerEditor(initialNumber: String, onDismiss: () -> Unit) {
             Text(stringResource(R.string.caller_save))
         }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } })
+}
+
+@Composable
+private fun GoogleLookupStatusCard(
+    title: String,
+    message: String,
+    icon: @Composable () -> Unit,
+    emphasized: Boolean = false,
+    extra: @Composable (() -> Unit)? = null
+) {
+    ElevatedCard(
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (emphasized) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            icon()
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    message,
+                    style = if (emphasized) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (emphasized) FontWeight.Bold else FontWeight.Normal
+                )
+                extra?.invoke()
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
