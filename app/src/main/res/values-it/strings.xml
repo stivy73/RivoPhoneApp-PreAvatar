@@ -1178,6 +1178,8 @@
     <string name="caller_contact">Contatto Android</string>
     <string name="caller_custom">Nome personalizzato</string>
     <string name="caller_actions">Identifica o assegna un nome</string>
+    <string name="caller_google_search_number">Ricerca il numero in Google</string>
+    <string name="caller_google_places_logo">Google Places</string>
     <string name="caller_number">Numero di telefono</string>
     <string name="caller_invalid">Inserisci un numero valido con prefisso internazionale.</string>
     <string name="caller_refresh">Cerca / aggiorna identificazione online</string>

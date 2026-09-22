@@ -568,7 +568,7 @@ fun ContactDetailsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             if (fullContact == null) callerRepository.display(identifiedCaller)?.let { Text(it, style = MaterialTheme.typography.titleLarge) }
                             com.grinch.rivo4.view.screen.settings.CallerProvenance(identifiedCaller)
-                            com.grinch.rivo4.view.screen.settings.CallerActions(displayPhone)
+                            com.grinch.rivo4.view.screen.settings.CallerActions(displayPhone, expanded = true)
                         }
                     }
                     item {

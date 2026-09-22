@@ -1,7 +1,9 @@
 package com.grinch.rivo4.view.screen.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -10,7 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.grinch.rivo4.R
@@ -48,10 +52,30 @@ fun CallerProvenance(label: CallerLabel?) {
 }
 
 @Composable
-fun CallerActions(number: String) {
+fun CallerActions(number: String, expanded: Boolean = false) {
     var open by remember(number) { mutableStateOf(false) }
-    IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
-        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.caller_actions), modifier = Modifier.size(22.dp))
+    if (expanded) {
+        FilledTonalButton(
+            onClick = { open = true },
+            modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp),
+            shape = RoundedCornerShape(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_google_places),
+                contentDescription = stringResource(R.string.caller_google_places_logo),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.caller_google_search_number),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    } else {
+        IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.caller_actions), modifier = Modifier.size(22.dp))
+        }
     }
     if (open) CallerEditor(number, onDismiss = { open = false })
 }
