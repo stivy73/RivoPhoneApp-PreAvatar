@@ -55,10 +55,14 @@ fun CallerProvenance(label: CallerLabel?) {
 
 @Composable
 fun CallerActions(number: String, expanded: Boolean = false) {
+    val repository = koinInject<CallerIdentification>()
     var open by remember(number) { mutableStateOf(false) }
     if (expanded) {
         FilledTonalButton(
-            onClick = { open = true },
+            onClick = {
+                repository.identify(number, refresh = true)
+                open = true
+            },
             modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp),
             shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
