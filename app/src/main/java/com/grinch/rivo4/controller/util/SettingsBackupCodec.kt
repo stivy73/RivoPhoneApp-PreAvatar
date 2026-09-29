@@ -18,12 +18,14 @@ import kotlinx.serialization.json.put
 data class SettingsBackupDocument(
     val applicationId: String,
     val createdAtEpochMillis: Long,
-    val settings: Map<String, Any>
+    val settings: Map<String, Any>,
+    val callerOptions: Map<String, Boolean>? = null,
+    val customNames: Map<String, String>? = null
 )
 
 object SettingsBackupCodec {
     private const val FORMAT = "rivo-settings"
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val MAX_DOCUMENT_CHARS = 2_000_000
     private const val MAX_SETTINGS = 2_000
     private const val MAX_KEY_LENGTH = 200
@@ -32,9 +34,15 @@ object SettingsBackupCodec {
     fun encode(
         settings: Map<String, Any>,
         applicationId: String,
-        createdAtEpochMillis: Long = System.currentTimeMillis()
+        createdAtEpochMillis: Long = System.currentTimeMillis(),
+        callerOptions: Map<String, Boolean> = emptyMap(),
+        customNames: Map<String, String> = emptyMap()
     ): String {
         require(settings.size <= MAX_SETTINGS) { "Too many settings" }
+        require(callerOptions.keys.all { it in CALLER_OPTIONS }) { "Invalid caller option" }
+        require(customNames.size <= MAX_SETTINGS && customNames.all { (number, name) ->
+            number.matches(E164) && name.isNotBlank() && name.length <= 160 && name.none(Char::isISOControl)
+        }) { "Invalid custom names" }
         val encodedSettings = buildJsonObject {
             settings.toSortedMap().forEach { (key, value) ->
                 require(key.isNotBlank() && key.length <= MAX_KEY_LENGTH) { "Invalid setting key" }
@@ -47,6 +55,8 @@ object SettingsBackupCodec {
             put("applicationId", applicationId)
             put("createdAtEpochMillis", createdAtEpochMillis)
             put("settings", encodedSettings)
+            put("callerOptions", buildJsonObject { callerOptions.toSortedMap().forEach { (key, value) -> put(key, value) } })
+            put("customNames", buildJsonObject { customNames.toSortedMap().forEach { (key, value) -> put(key, value) } })
         }
         return json.encodeToString(JsonObject.serializer(), document)
     }
@@ -55,7 +65,8 @@ object SettingsBackupCodec {
         require(document.length <= MAX_DOCUMENT_CHARS) { "Backup file is too large" }
         val root = json.parseToJsonElement(document).jsonObject
         require(root["format"]?.jsonPrimitive?.contentOrNull == FORMAT) { "Unsupported backup format" }
-        require(root["version"]?.jsonPrimitive?.intOrNull == VERSION) { "Unsupported backup version" }
+        val version = root["version"]?.jsonPrimitive?.intOrNull
+        require(version == 1 || version == VERSION) { "Unsupported backup version" }
         val applicationId = root["applicationId"]?.jsonPrimitive?.contentOrNull.orEmpty()
         require(applicationId.isNotBlank()) { "Missing application id" }
         val createdAt = root["createdAtEpochMillis"]?.jsonPrimitive?.longOrNull
@@ -69,8 +80,24 @@ object SettingsBackupCodec {
             require(key.isNotBlank() && key.length <= MAX_KEY_LENGTH) { "Invalid setting key" }
             decoded[key] = decodeValue(value.jsonObject)
         }
-        return SettingsBackupDocument(applicationId, createdAt, decoded)
+        val callerOptions = if (version == 2) root["callerOptions"]?.jsonObject?.mapValues { (key, value) ->
+            require(key in CALLER_OPTIONS) { "Invalid caller option" }
+            value.jsonPrimitive.booleanOrNull ?: throw IllegalArgumentException("Invalid caller option")
+        } ?: throw IllegalArgumentException("Missing caller options") else null
+        val customNames = if (version == 2) root["customNames"]?.jsonObject?.also {
+            require(it.size <= MAX_SETTINGS) { "Too many custom names" }
+        }?.mapValues { (number, value) ->
+            val name = value.jsonPrimitive.contentOrNull ?: throw IllegalArgumentException("Invalid custom name")
+            require(number.matches(E164) && name.isNotBlank() && name.length <= 160 && name.none(Char::isISOControl)) {
+                "Invalid custom name"
+            }
+            name
+        } ?: throw IllegalArgumentException("Missing custom names") else null
+        return SettingsBackupDocument(applicationId, createdAt, decoded, callerOptions, customNames)
     }
+
+    private val CALLER_OPTIONS = setOf("online", "google", "business_search")
+    private val E164 = Regex("\\+[1-9][0-9]{7,14}")
 
     private fun encodeValue(value: Any): JsonObject = buildJsonObject {
         when (value) {

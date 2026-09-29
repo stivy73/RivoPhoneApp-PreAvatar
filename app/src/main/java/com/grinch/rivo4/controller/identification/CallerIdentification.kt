@@ -186,6 +186,32 @@ class CallerIdentification(private val context: Context) {
 
     fun customNames(): Map<String, String> = storage.all.filterKeys { it.startsWith("custom:") }
         .mapKeys { it.key.removePrefix("custom:") }.mapValues { it.value as? String ?: "" }
+
+    fun backupOptions(): Map<String, Boolean> = mapOf(
+        "online" to option("online"),
+        "google" to option("google"),
+        "business_search" to option("business_search")
+    )
+
+    /** Restores user choices and local names, never keys, verification state or provider cache. */
+    suspend fun restoreBackup(options: Map<String, Boolean>, names: Map<String, String>) = withContext(Dispatchers.IO) {
+        require(options.keys.all { it in setOf("online", "google", "business_search") })
+        require(names.all { (number, name) ->
+            number.matches(Regex("\\+[1-9][0-9]{7,14}")) && name.isNotBlank() && name.length <= 160 && name.none(Char::isISOControl)
+        })
+        val googleReady = runCatching { secrets.read("google").isNotBlank() }.getOrDefault(false) && option("verified:google")
+        synchronized(this@CallerIdentification) {
+            invalidate()
+            cancelProvider("google")
+            results.clear()
+            storage.edit(commit = true) {
+                storage.all.keys.filter { it.startsWith("custom:") }.forEach(::remove)
+                names.forEach { (number, name) -> putString("custom:$number", name) }
+                options.forEach { (key, enabled) -> putBoolean(key, enabled && (key != "google" || googleReady)) }
+            }
+            revision.update { it + 1 }
+        }
+    }
     fun setCustom(raw: String, name: String): Boolean {
         val number = normalize(raw) ?: return false
         storage.edit {

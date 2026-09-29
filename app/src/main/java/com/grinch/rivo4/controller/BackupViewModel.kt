@@ -30,25 +30,42 @@ class BackupViewModel(
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
+    private fun escapeVCard(value: String): String = value.replace("\\", "\\\\")
+        .replace("\r", "").replace("\n", "\\n").replace(";", "\\;").replace(",", "\\,")
+
+    private fun unescapeVCard(value: String): String {
+        val output = StringBuilder()
+        var index = 0
+        while (index < value.length) {
+            if (value[index] == '\\' && index + 1 < value.length) {
+                output.append(when (value[++index]) { 'n', 'N' -> '\n'; else -> value[index] })
+            } else output.append(value[index])
+            index++
+        }
+        return output.toString()
+    }
+
     fun exportContacts(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val contacts = contactsRepo.getContacts()
+                // The generic VCF action is public-only. Private contacts have their own
+                // explicit export flow and must never leak into a regular contact file.
+                val contacts = contactsRepo.getContacts(includePrivate = false, includeHidden = false)
                 val vCard = buildString {
                     contacts.forEach { contact ->
                         append("BEGIN:VCARD\n")
                         append("VERSION:3.0\n")
-                        append("FN:${contact.name}\n")
+                        append("FN:${escapeVCard(contact.name)}\n")
                         contact.phoneNumbers.forEach { number ->
-                            append("TEL;TYPE=CELL:$number\n")
+                            append("TEL;TYPE=CELL:${escapeVCard(number)}\n")
                         }
                         contact.emails.forEach { email ->
-                            append("EMAIL;TYPE=INTERNET:$email\n")
+                            append("EMAIL;TYPE=INTERNET:${escapeVCard(email)}\n")
                         }
                         append("END:VCARD\n")
                     }
                 }
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                (context.contentResolver.openOutputStream(uri) ?: error("Cannot open destination")).use { outputStream ->
                     OutputStreamWriter(outputStream).use { writer ->
                         writer.write(vCard)
                     }
@@ -63,7 +80,7 @@ class BackupViewModel(
     fun importContacts(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                (context.contentResolver.openInputStream(uri) ?: error("Cannot open backup")).use { inputStream ->
                     BufferedReader(InputStreamReader(inputStream)).use { reader ->
                         var line: String?
                         var currentName = ""
@@ -72,25 +89,23 @@ class BackupViewModel(
                         
                         while (reader.readLine().also { line = it } != null) {
                             when {
-                                line!!.startsWith("FN:") -> currentName = line!!.substring(3)
+                                line!!.startsWith("FN:") -> currentName = unescapeVCard(line!!.substring(3))
                                 line!!.startsWith("TEL") -> {
-                                    val parts = line!!.split(":")
-                                    if (parts.size > 1) currentNumbers.add(parts[1])
+                                    if (line!!.contains(':')) currentNumbers.add(unescapeVCard(line!!.substringAfter(':')))
                                 }
                                 line!!.startsWith("EMAIL") -> {
-                                    val parts = line!!.split(":")
-                                    if (parts.size > 1) currentEmails.add(parts[1])
+                                    if (line!!.contains(':')) currentEmails.add(unescapeVCard(line!!.substringAfter(':')))
                                 }
                                 line!!.startsWith("END:VCARD") -> {
                                     if (currentName.isNotEmpty()) {
-                                        contactsRepo.saveContact(
+                                        check(contactsRepo.saveContact(
                                             Contact(
                                                 id = "0",
                                                 name = currentName,
                                                 phoneNumbers = currentNumbers.toList(),
                                                 emails = currentEmails.toList()
                                             )
-                                        )
+                                        )) { "Contact provider rejected import" }
                                     }
                                     currentName = ""
                                     currentNumbers.clear()
@@ -112,7 +127,7 @@ class BackupViewModel(
             try {
                 val logs = callLogRepo.getCallLogs()
                 val jsonString = json.encodeToString(logs)
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                (context.contentResolver.openOutputStream(uri) ?: error("Cannot open destination")).use { outputStream ->
                     OutputStreamWriter(outputStream).use { writer ->
                         writer.write(jsonString)
                     }
@@ -127,11 +142,15 @@ class BackupViewModel(
     fun importCallLogs(context: Context, uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                (context.contentResolver.openInputStream(uri) ?: error("Cannot open backup")).use { inputStream ->
                     val jsonString = BufferedReader(InputStreamReader(inputStream)).readText()
                     val logs = json.decodeFromString<List<CallLogEntry>>(jsonString)
+                    val existing = callLogRepo.getCallLogs()
+                        .map { listOf(it.number, it.type.toString(), it.date.toString(), it.duration.toString()) }
+                        .toMutableSet()
                     logs.forEach { log ->
-                        callLogRepo.saveCallLog(log)
+                        val identity = listOf(log.number, log.type.toString(), log.date.toString(), log.duration.toString())
+                        if (existing.add(identity)) callLogRepo.saveCallLog(log)
                     }
                 }
                 _status.value = context.getString(R.string.backup_call_logs_import_success)

@@ -429,26 +429,26 @@
     <string name="settings_backup_title">Backup &amp; Restore</string>
     <string name="settings_backup_contacts_header">Contacts</string>
     <string name="settings_backup_export_contacts">Export Contacts</string>
-    <string name="settings_backup_export_contacts_supporting">Save contacts to a VCF file</string>
+    <string name="settings_backup_export_contacts_supporting">Public contacts only: names, phone numbers and email addresses. Photos and other fields are not included.</string>
     <string name="settings_backup_import_contacts">Import Contacts</string>
-    <string name="settings_backup_import_contacts_supporting">Restore contacts from a VCF file</string>
+    <string name="settings_backup_import_contacts_supporting">Create new public contacts from a VCF file; importing again may create duplicates.</string>
     <string name="settings_backup_call_logs_header">Call Logs</string>
     <string name="settings_backup_export_logs">Export Call Logs</string>
-    <string name="settings_backup_export_logs_supporting">Save history to a JSON file</string>
+    <string name="settings_backup_export_logs_supporting">Save visible system call history to JSON; recordings and call notes are not included.</string>
     <string name="settings_backup_import_logs">Import Call Logs</string>
-    <string name="settings_backup_import_logs_supporting">Restore history from a JSON file</string>
+    <string name="settings_backup_import_logs_supporting">Add missing calls to the system log. Rivo must be the default dialer with call-log permission.</string>
     <string name="settings_backup_preferences_title">Settings backup</string>
-    <string name="settings_backup_preferences_description">Save and restore Rivo Personal preferences. Contacts, call history, recordings, security codes and system permissions are not included.</string>
+    <string name="settings_backup_preferences_description">Save app preferences, caller ID options and custom number names in a JSON file. The file contains phone numbers from custom names: keep it private. Contacts, call history, recordings, API keys, Drive access, security codes, device-specific choices and system permissions are not included.</string>
     <string name="settings_backup_preferences_export">Back up settings</string>
     <string name="settings_backup_preferences_export_supporting">Create a portable JSON settings file</string>
     <string name="settings_backup_preferences_restore">Restore settings</string>
     <string name="settings_backup_preferences_restore_supporting">Select a Rivo Personal settings backup</string>
-    <string name="settings_backup_preferences_exported">Backed up %1$d settings</string>
+    <string name="settings_backup_preferences_exported">Backed up %1$d items</string>
     <string name="settings_backup_preferences_export_failed">Could not create the settings backup</string>
     <string name="settings_backup_preferences_invalid">This is not a valid Rivo Personal settings backup</string>
     <string name="settings_backup_preferences_confirm_title">Restore settings?</string>
-    <string name="settings_backup_preferences_confirm_message">This backup contains %1$d settings. Current restorable preferences will be replaced.</string>
-    <string name="settings_backup_preferences_restored">Restored %1$d settings</string>
+    <string name="settings_backup_preferences_confirm_message">This backup contains %1$d items. Current restorable preferences and custom number names will be replaced. Google Places requires the API key to be configured and verified on this device.</string>
+    <string name="settings_backup_preferences_restored">Restored %1$d items</string>
     <string name="settings_backup_preferences_restore_failed">Could not restore the settings</string>
 
     <!-- Settings > Manage contacts -->

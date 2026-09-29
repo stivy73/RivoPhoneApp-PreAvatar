@@ -26,6 +26,40 @@ class SettingsBackupCodecTest {
         assertEquals("it.stivy.rivo.personal.debug", decoded.applicationId)
         assertEquals(1234L, decoded.createdAtEpochMillis)
         assertEquals(settings, decoded.settings)
+        assertEquals(emptyMap<String, Boolean>(), decoded.callerOptions)
+        assertEquals(emptyMap<String, String>(), decoded.customNames)
+    }
+
+    @Test
+    fun roundTripIncludesCallerChoicesAndPrivateCustomNamesButNoKeys() {
+        val encoded = SettingsBackupCodec.encode(
+            settings = mapOf("call_recording_auto" to true),
+            applicationId = "it.stivy.rivo.personal.debug",
+            createdAtEpochMillis = 1234L,
+            callerOptions = mapOf("online" to true, "google" to true, "business_search" to false),
+            customNames = mapOf("+390438460195" to "Veterinario")
+        )
+        val decoded = SettingsBackupCodec.decode(encoded)
+        assertEquals(true, decoded.callerOptions?.get("google"))
+        assertEquals("Veterinario", decoded.customNames?.get("+390438460195"))
+        assertEquals(false, encoded.contains("verified:google"))
+        assertEquals(false, encoded.contains("apiKey"))
+    }
+
+    @Test
+    fun acceptsLegacyV1WithoutChangingCallerSettings() {
+        val old = """{"format":"rivo-settings","version":1,"applicationId":"it.stivy.rivo.personal.debug","createdAtEpochMillis":1,"settings":{"dynamic_colors":{"type":"boolean","value":true}}}"""
+        val decoded = SettingsBackupCodec.decode(old)
+        assertEquals(true, decoded.settings["dynamic_colors"])
+        assertEquals(null, decoded.callerOptions)
+        assertEquals(null, decoded.customNames)
+    }
+
+    @Test
+    fun rejectsInvalidCustomNumber() {
+        assertThrows(IllegalArgumentException::class.java) {
+            SettingsBackupCodec.encode(emptyMap(), "test", customNames = mapOf("not-a-phone" to "Name"))
+        }
     }
 
     @Test
