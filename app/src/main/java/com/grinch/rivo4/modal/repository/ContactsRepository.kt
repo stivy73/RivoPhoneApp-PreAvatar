@@ -422,7 +422,7 @@ class ContactsRepository(
         return Pair(null, null)
     }
 
-    override fun saveContact(contact: Contact) {
+    override fun saveContact(contact: Contact): Boolean {
         if (contact.isPrivate) {
             val entity = PrivateContactEntity.fromContact(contact)
             if (entity.localId == 0L) {
@@ -430,7 +430,7 @@ class ContactsRepository(
             } else {
                 privateContactDao.update(entity)
             }
-            return
+            return true
         }
         val ops = ArrayList<ContentProviderOperation>()
         val photoBytes = contact.photoUri?.let { getPhotoBytes(it) }
@@ -547,7 +547,7 @@ class ContactsRepository(
             }
         } else {
             val rawContactIds = getRawContactIds(contact.id)
-            if (rawContactIds.isEmpty()) return
+            if (rawContactIds.isEmpty()) return false
 
             rawContactIds.forEach { rawContactId ->
                 ops.add(
@@ -718,8 +718,10 @@ class ContactsRepository(
 
         try {
             contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            return true
         } catch (e: Exception) {
             e.printStackTrace()
+            return false
         }
     }
 

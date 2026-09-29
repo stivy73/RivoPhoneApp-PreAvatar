@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="sharedpref" path="caller_identification.xml" />
-        <exclude domain="sharedpref" path="drive_backup.xml" />
-        <exclude domain="file" path="Rivo Recordings/" />
-    
+    <exclude domain="sharedpref" path="drive_backup.xml" />
+    <!-- Device-protected preferences contain local security codes and device-specific state. -->
+    <exclude domain="device_sharedpref" path="rivo_prefs.xml" />
+    <exclude domain="file" path="Rivo Recordings/" />
+    <exclude domain="external" path="Rivo Recordings/" />
+    <exclude domain="external" path="Recordings/Rivo Recordings/" />
 </full-backup-content>

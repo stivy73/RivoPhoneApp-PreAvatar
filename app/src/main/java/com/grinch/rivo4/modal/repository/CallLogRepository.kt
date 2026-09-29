@@ -96,11 +96,8 @@ class CallLogRepository(
             put(CallLog.Calls.DURATION, entry.duration)
             put(CallLog.Calls.NEW, 1)
         }
-        try {
-            contentResolver.insert(CallLog.Calls.CONTENT_URI, values)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        contentResolver.insert(CallLog.Calls.CONTENT_URI, values)
+            ?: throw java.io.IOException("Call log provider rejected import")
     }
 
     private fun contactIdFromLookupUri(lookupUri: String): String? {

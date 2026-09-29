@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
-    <cloud-backup>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
         <exclude domain="sharedpref" path="caller_identification.xml" />
         <exclude domain="sharedpref" path="drive_backup.xml" />
+        <exclude domain="device_sharedpref" path="rivo_prefs.xml" />
         <exclude domain="file" path="Rivo Recordings/" />
-        
+        <exclude domain="external" path="Rivo Recordings/" />
+        <exclude domain="external" path="Recordings/Rivo Recordings/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="caller_identification.xml" />
         <exclude domain="sharedpref" path="drive_backup.xml" />
+        <exclude domain="device_sharedpref" path="rivo_prefs.xml" />
         <exclude domain="file" path="Rivo Recordings/" />
+        <exclude domain="external" path="Rivo Recordings/" />
+        <exclude domain="external" path="Recordings/Rivo Recordings/" />
     </device-transfer>
-    
 </data-extraction-rules>

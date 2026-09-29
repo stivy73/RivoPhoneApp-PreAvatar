@@ -34,6 +34,7 @@ import com.grinch.rivo4.PATREON_URL
 import com.grinch.rivo4.PLAY_STORE_URL
 import com.grinch.rivo4.R
 import com.grinch.rivo4.controller.util.PreferenceManager
+import com.grinch.rivo4.controller.identification.CallerIdentification
 import com.grinch.rivo4.controller.util.SettingsBackupCodec
 import com.grinch.rivo4.controller.util.SettingsBackupDocument
 import com.grinch.rivo4.controller.util.getAppVersion
@@ -65,6 +66,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = koinInject<PreferenceManager>()
+    val callerIdentification = koinInject<CallerIdentification>()
     val settingsState by prefs.settingsChanged.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -87,11 +89,15 @@ fun SettingsScreen(
                 val count = withContext(Dispatchers.IO) {
                     runCatching {
                         val snapshot = prefs.settingsBackupSnapshot()
-                        val document = SettingsBackupCodec.encode(snapshot, context.packageName)
+                        val options = callerIdentification.backupOptions()
+                        val names = callerIdentification.customNames()
+                        val document = SettingsBackupCodec.encode(
+                            snapshot, context.packageName, callerOptions = options, customNames = names
+                        )
                         context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { writer ->
                             writer.write(document)
                         } ?: error("Cannot open destination")
-                        snapshot.size
+                        snapshot.size + options.size + names.size
                     }.getOrNull()
                 }
                 settingsBackupBusy = false
@@ -506,12 +512,21 @@ fun SettingsScreen(
                     settingsBackupBusy = true
                     scope.launch {
                         val restored = withContext(Dispatchers.IO) {
-                            runCatching { prefs.restoreSettingsBackup(backup.settings) }.getOrDefault(false)
+                            runCatching {
+                                if (!prefs.restoreSettingsBackup(backup.settings)) false
+                                else {
+                                    if (backup.callerOptions != null && backup.customNames != null) {
+                                        callerIdentification.restoreBackup(backup.callerOptions, backup.customNames)
+                                    }
+                                    true
+                                }
+                            }.getOrDefault(false)
                         }
                         settingsBackupBusy = false
                         snackbarHostState.showSnackbar(
                             if (restored) {
-                                resources.getString(R.string.settings_backup_preferences_restored, backup.settings.size)
+                                resources.getString(R.string.settings_backup_preferences_restored,
+                                    backup.settings.size + (backup.callerOptions?.size ?: 0) + (backup.customNames?.size ?: 0))
                             } else {
                                 resources.getString(R.string.settings_backup_preferences_restore_failed)
                             }
@@ -519,7 +534,8 @@ fun SettingsScreen(
                     }
                 },
                 title = stringResource(R.string.settings_backup_preferences_confirm_title),
-                message = stringResource(R.string.settings_backup_preferences_confirm_message, backup.settings.size),
+                message = stringResource(R.string.settings_backup_preferences_confirm_message,
+                    backup.settings.size + (backup.callerOptions?.size ?: 0) + (backup.customNames?.size ?: 0)),
                 confirmLabel = stringResource(R.string.settings_backup_preferences_restore),
                 dismissLabel = stringResource(R.string.action_cancel),
                 icon = Icons.Outlined.Restore

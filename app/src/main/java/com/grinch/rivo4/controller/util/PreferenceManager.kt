@@ -73,8 +73,11 @@ class PreferenceManager(context: Context) {
         .toMap()
 
     fun restoreSettingsBackup(settings: Map<String, Any>): Boolean {
-        val validated = settings.filterKeys(::isBackupEligible)
-        require(validated.size == settings.size) { "Backup contains excluded settings" }
+        // Older exports contained device-bound choices. Ignore those entries so v1 files
+        // remain importable, but continue rejecting security codes and other private state.
+        val compatible = settings.filterKeys { it !in LEGACY_DEVICE_BOUND_KEYS }
+        val validated = compatible.filterKeys(::isBackupEligible)
+        require(validated.size == compatible.size) { "Backup contains excluded settings" }
         val editor = prefs.edit()
         prefs.all.keys.filter(::isBackupEligible).forEach(editor::remove)
         validated.forEach { (key, value) ->
@@ -426,6 +429,17 @@ class PreferenceManager(context: Context) {
 
         val DEFAULT_BOTTOM_NAV_ORDER = listOf(TAB_RECENTS, TAB_CONTACTS, TAB_FAVORITES, TAB_RECORDINGS)
 
+        private val LEGACY_DEVICE_BOUND_KEYS = setOf(
+            KEY_LAST_USED_ACCOUNT_NAME,
+            KEY_LAST_USED_ACCOUNT_TYPE,
+            KEY_VISIBLE_ACCOUNTS,
+            KEY_FAVORITES_ORDER,
+            KEY_VOICEMAIL_RINGTONE,
+            KEY_HIDDEN_CONTACTS_VISIBLE,
+            "default_sim",
+            "call_recording_folder"
+        )
+
         private val SETTINGS_BACKUP_EXCLUDED_KEYS = setOf(
             KEY_APP_LOCK_ENABLED,
             KEY_APP_LOCK_BIOMETRIC,
@@ -437,7 +451,8 @@ class PreferenceManager(context: Context) {
             KEY_PATREON_PROMPT_SHOWN,
             KEY_APP_USAGE_SECONDS,
             KEY_RATE_APP_SHOWN,
-            KEY_RATE_APP_SNOOZED_TIME
+            KEY_RATE_APP_SNOOZED_TIME,
+            *LEGACY_DEVICE_BOUND_KEYS.toTypedArray()
         )
 
         private val SETTINGS_BACKUP_EXCLUDED_PREFIXES = listOf(
